@@ -2,7 +2,7 @@ import uuid, os, base64, json
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
-from dotenv import load_dotenv
+import toml
 from datetime import datetime, timedelta
 
 CACHE_FILE = ".visitas_cache.json"
@@ -12,7 +12,15 @@ EXPIRATION_HOURS = 12
 st.set_page_config(
     page_title="Gestor de Visitas", layout="wide", initial_sidebar_state="expanded"
 )
-load_dotenv(dotenv_path=".lock")
+
+
+# Cargar API_KEY desde secrets.toml
+def get_api_key():
+    try:
+        secrets = toml.load("secrets.toml")
+        return secrets["api"]["API_KEY"]
+    except Exception:
+        return None
 
 
 def save_cache(pages, page_counter):
@@ -55,9 +63,9 @@ def clean_expired(pages):
 # ---------- FUNCIÓN DE EXTRACCIÓN ----------
 @st.cache_resource(show_spinner="Procesando PDF con Gemini…")
 def extract_with_gemini(pdf_bytes: bytes):
-    api_key = os.getenv("API_KEY")
+    api_key = get_api_key()
     if not api_key:
-        st.error("No se encontró la API_KEY. Revisa tu archivo .lock.")
+        st.error("No se encontró la API_KEY. Revisa tu archivo secrets.toml.")
         return "Error de configuración", pd.DataFrame()
     genai.configure(api_key=api_key)
 
@@ -71,7 +79,7 @@ Eres un experto OCR. Devuelve **exactamente** este JSON:
   ]
 }
 """
-    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+    model = genai.GenerativeModel("gemini-2.5-flash-lite")
     response = model.generate_content([prompt, pdf_part])
 
     try:
@@ -130,7 +138,7 @@ with st.sidebar:
     st.markdown("### Visitas")
     for i, p in enumerate(pages):
         label = extract_sidebar_label(p["name"])
-        if p["df"] is not None:
+        if p["df"] is not None and "check" in p["df"].columns:
             remaining = p["df"][~p["df"]["check"]]
             if remaining.empty:
                 label += " 🟢"
@@ -200,6 +208,9 @@ if page["df"] is None:
         st.rerun()
 else:
     df = page["df"]
+    # Asegurarse de que exista la columna "check"
+    if "check" not in df.columns:
+        df.insert(0, "check", False)
     is_checked = df["check"].tolist()
 
     column_config = {"check": st.column_config.CheckboxColumn("Hecho")}
@@ -229,7 +240,7 @@ else:
         save_cache(pages, page_counter)
         st.rerun()
 
-    remaining = edited[~edited.check]
+    remaining = edited[~edited["check"]]
     if remaining.empty:
         st.success("✅ Visita completa")
     else:
