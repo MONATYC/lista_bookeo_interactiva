@@ -1,4 +1,8 @@
-import uuid, os, json
+import os
+os.environ["WATCHDOG_USE_POLLING"] = "true"
+
+import base64
+import uuid, json
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
