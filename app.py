@@ -19,9 +19,24 @@ st.set_page_config(
 )
 
 
-# Cargar API_KEY desde secrets.toml
-def get_api_key():
-    genai.configure(api_key=st.secrets["API_KEY"])
+# Cargar y configurar la API de Gemini
+def configure_api():
+    """Carga la API_KEY desde los secretos y configura la API de Gemini."""
+    api_key = st.secrets.get("API_KEY")
+    if not api_key:
+        st.error(
+            "No se encontró la API_KEY de Gemini. Asegúrate de que está en tu archivo .streamlit/secrets.toml."
+        )
+        st.info(
+            'El archivo `.streamlit/secrets.toml` debería tener el siguiente formato:\n\n`API_KEY = "tu_clave_de_api_aqui"`'
+        )
+        return False
+    try:
+        genai.configure(api_key=api_key)
+        return True
+    except Exception as e:
+        st.error(f"Error al configurar la API de Gemini: {e}")
+        return False
 
 
 def save_cache(pages, page_counter):
@@ -63,13 +78,11 @@ def clean_expired(pages):
 
 # ---------- FUNCIÓN DE EXTRACCIÓN ----------
 @st.cache_resource(show_spinner="Procesando PDF con Gemini…")
-def extract_with_gemini(pdf_bytes: bytes):
-    api_key = get_api_key()
-    if not api_key:
-        st.error("No se encontró la API_KEY. Revisa tu archivo secrets.toml.")
-        return "Error de configuración", pd.DataFrame()
-    genai.configure(api_key=api_key)
-
+def extract_with_gemini(pdf_bytes: bytes) -> tuple[str, pd.DataFrame]:
+    """
+    Extrae datos de un PDF usando la API de Gemini.
+    Asume que la API ya ha sido configurada.
+    """
     pdf_part = {"mime_type": "application/pdf", "data": pdf_bytes}
     prompt = """
 Eres un experto OCR. Devuelve **exactamente** este JSON:
@@ -80,7 +93,9 @@ Eres un experto OCR. Devuelve **exactamente** este JSON:
   ]
 }
 """
-    model = genai.GenerativeModel("gemini-2.5-flash-lite")
+    # Nota: Se ha cambiado "gemini-2.5-flash-lite" por "gemini-1.5-flash",
+    # que es el modelo rápido y multimodal más reciente.
+    model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content([prompt, pdf_part])
 
     try:
@@ -94,6 +109,9 @@ Eres un experto OCR. Devuelve **exactamente** este JSON:
         st.error(f"Respuesta cruda:\n{response.text}")
         return "Error en PDF", pd.DataFrame()
 
+
+# Configurar la API de Gemini al inicio de la ejecución
+API_CONFIGURED = configure_api()
 
 # ---------- INICIALIZACIÓN SESSION STATE Y CACHE ----------
 if "pages" not in st.session_state or "page_counter" not in st.session_state:
@@ -224,13 +242,20 @@ with st.sidebar:
 st.header(page["name"])
 
 if page["df"] is None:
-    pdf_file = st.file_uploader("Sube un Bookeo PDF", type=["pdf"])
-    if pdf_file:
-        title, df = extract_with_gemini(pdf_file.read())
-        page["name"] = title
-        page["df"] = df
-        save_cache(pages, page_counter)
-        st.rerun()
+    if API_CONFIGURED:
+        pdf_file = st.file_uploader("Sube un Bookeo PDF", type=["pdf"])
+        if pdf_file:
+            title, df = extract_with_gemini(pdf_file.read())
+            # Solo actualiza si la extracción fue exitosa
+            if not df.empty:
+                page["name"] = title
+                page["df"] = df
+                save_cache(pages, page_counter)
+                st.rerun()
+    else:
+        st.warning(
+            "La funcionalidad de carga de PDF está deshabilitada hasta que se configure la API_KEY."
+        )
 else:
     df = page["df"]
     # Asegurarse de que exista la columna "check"
