@@ -252,10 +252,36 @@ else:
     if "check" not in df.columns:
         df.insert(0, "check", False)
 
+    # Inyectar CSS para aumentar la fuente, centrar el texto y permitir ancho automático.
+    st.markdown(
+        """
+        <style>
+        div[data-baseweb="table"] table td, div[data-baseweb="table"] table th {
+            font-size: calc(1rem + 2pt);
+            text-align: center;
+            width: auto;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     is_checked = df["check"].tolist()
 
     # ---------- CONFIGURACIÓN DE COLUMNAS ----------
     column_config = {"check": st.column_config.CheckboxColumn("Hecho")}
+
+    # Forzar el orden deseado de columnas, sólo incluir las que existan en el DataFrame
+    desired_order = [
+        "check",
+        "Nombre",
+        "Apellido(s)",
+        "Teléfono",
+        "Participantes",
+        "Importe",
+        "Reserva",
+    ]
+    visible_columns = [col for col in desired_order if col in df.columns]
 
     for col in df.columns:
         if col == "check":
@@ -268,22 +294,6 @@ else:
             column_config[col] = st.column_config.TextColumn(disabled=False)
         else:
             column_config[col] = st.column_config.TextColumn(disabled=False)
-
-    if show_all:
-        visible_columns = df.columns.tolist()
-        # Posicionar 'Apellido(s)' y 'Teléfono' justo después de 'Nombre' si existe
-        for col in ["Apellido(s)", "Teléfono"]:
-            if col in visible_columns:
-                visible_columns.remove(col)
-                try:
-                    idx_nombre = visible_columns.index("Nombre")
-                    visible_columns.insert(idx_nombre + 1, col)
-                except ValueError:
-                    visible_columns.insert(0, col)
-    else:
-        visible_columns = [
-            c for c in df.columns if c not in ["Apellido(s)", "Teléfono"]
-        ]
 
     edited = st.data_editor(
         df,
