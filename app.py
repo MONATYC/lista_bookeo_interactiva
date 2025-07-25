@@ -92,7 +92,7 @@ Devuelve **exactamente** este JSON:
 {
   "title": "<TÍTULO EN UNA LÍNEA>",
   "rows": [
-    {"Nombre": "...", "Apellido(s)": "...", "Participantes": "...", "Importe": "... €", "Reserva": "..."}
+    {"Nombre": "...", "Apellido(s)": "...", "Participantes": "...", "Importe": "... €","Teléfono": "... €", "Reserva": "..."}
   ]
 }
 """
@@ -231,7 +231,7 @@ col1, col2 = st.columns([4, 1])
 with col1:
     st.header(page["name"])
 with col2:
-    show_lastnames = st.checkbox("Mostrar columna Apellido(s)", value=False)
+    show_all = st.checkbox("Visibles todas las columnas", value=False)
 
 if page["df"] is None:
     if API_CONFIGURED:
@@ -255,9 +255,7 @@ else:
     is_checked = df["check"].tolist()
 
     # ---------- CONFIGURACIÓN DE COLUMNAS ----------
-    column_config = {
-        "check": st.column_config.CheckboxColumn("Hecho")
-    }
+    column_config = {"check": st.column_config.CheckboxColumn("Hecho")}
 
     for col in df.columns:
         if col == "check":
@@ -266,23 +264,26 @@ else:
             column_config[col] = st.column_config.NumberColumn(
                 disabled=False, format="%d", step=1, label=col
             )
-        elif col == "Apellido(s)":
-            # Ya no usamos visible=False
+        elif col in ["Apellido(s)", "Teléfono"]:
             column_config[col] = st.column_config.TextColumn(disabled=False)
         else:
             column_config[col] = st.column_config.TextColumn(disabled=False)
 
-    if show_lastnames:
+    if show_all:
         visible_columns = df.columns.tolist()
-        if "Apellido(s)" in visible_columns:
-            visible_columns.remove("Apellido(s)")
-            try:
-                idx_nombre = visible_columns.index("Nombre")
-                visible_columns.insert(idx_nombre + 1, "Apellido(s)")
-            except ValueError:
-                visible_columns.insert(0, "Apellido(s)")
+        # Posicionar 'Apellido(s)' y 'Teléfono' justo después de 'Nombre' si existe
+        for col in ["Apellido(s)", "Teléfono"]:
+            if col in visible_columns:
+                visible_columns.remove(col)
+                try:
+                    idx_nombre = visible_columns.index("Nombre")
+                    visible_columns.insert(idx_nombre + 1, col)
+                except ValueError:
+                    visible_columns.insert(0, col)
     else:
-        visible_columns = [c for c in df.columns if c != "Apellido(s)"]
+        visible_columns = [
+            c for c in df.columns if c not in ["Apellido(s)", "Teléfono"]
+        ]
 
     edited = st.data_editor(
         df,
