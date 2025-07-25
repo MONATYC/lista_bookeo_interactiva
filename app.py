@@ -74,7 +74,7 @@ def clean_expired(pages):
 
 
 # ---------- FUNCIÓN DE EXTRACCIÓN ----------
-@st.cache_resource(show_spinner="Procesando PDF con Gemini…")
+@st.cache_resource(show_spinner="Procesando visita… Espera a que aparezca la tabla")
 def extract_with_gemini(pdf_bytes: bytes) -> tuple[str, pd.DataFrame]:
     """
     Extrae datos de un PDF usando la API de Gemini.
