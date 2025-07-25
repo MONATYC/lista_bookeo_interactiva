@@ -271,16 +271,25 @@ else:
     # ---------- CONFIGURACIÓN DE COLUMNAS ----------
     column_config = {"check": st.column_config.CheckboxColumn("Hecho")}
 
-    # Forzar el orden deseado de columnas, sólo incluir las que existan en el DataFrame
-    desired_order = [
-        "check",
-        "Nombre",
-        "Apellido(s)",
-        "Teléfono",
-        "Participantes",
-        "Importe",
-        "Reserva",
-    ]
+    # Alternar columnas visibles según el estado del checkbox "Visibles todas las columnas"
+    if show_all:
+        desired_order = [
+            "check",
+            "Nombre",
+            "Apellido(s)",
+            "Teléfono",
+            "Participantes",
+            "Importe",
+            "Reserva",
+        ]
+    else:
+        desired_order = [
+            "check",
+            "Nombre",
+            "Participantes",
+            "Importe",
+            "Reserva",
+        ]
     visible_columns = [col for col in desired_order if col in df.columns]
 
     for col in df.columns:
