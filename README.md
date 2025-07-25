@@ -1,14 +1,14 @@
 # Lista Bookeo Interactiva
 
-This Streamlit app lets you manage visit lists generated from Bookeo PDFs.
-The very first lines of `app.py` set the environment variable
-`WATCHDOG_USE_POLLING` to `true` via `os.environ`. This mitigates the
-"inotify watch limit reached" error that may appear when Streamlit watches
-files on systems with a low limit of inotify watchers.
+Esta aplicación permite extraer y gestionar visitas de archivos PDF exportados desde Bookeo. Utiliza Streamlit y la API de Google Generative AI para procesar el documento y mostrar los datos de forma interactiva.
 
-Run the app with:
+> **Nota técnica**:  
+> Las primeras líneas de `app.py` establecen la variable de entorno `WATCHDOG_USE_POLLING` a `true` mediante `os.environ`. Esto soluciona el error "inotify watch limit reached" que puede aparecer en sistemas con un límite bajo de inotify watchers cuando Streamlit monitoriza archivos.
+
+## Instalación
+
+1. Clona este repositorio.
+2. Instala las dependencias de Python:
 
 ```bash
-streamlit run app.py
-```
-
+pip install -r requirements.txt
