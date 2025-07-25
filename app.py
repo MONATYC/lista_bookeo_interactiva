@@ -256,7 +256,7 @@ else:
 
     # ---------- CONFIGURACIÓN DE COLUMNAS ----------
     column_config = {
-        "check": st.column_config.CheckboxColumn("Hecho", disabled=is_checked)
+        "check": st.column_config.CheckboxColumn("Hecho")
     }
 
     for col in df.columns:
@@ -264,13 +264,13 @@ else:
             continue
         if col == "Participantes":
             column_config[col] = st.column_config.NumberColumn(
-                disabled=is_checked, format="%d", step=1, label=col
+                disabled=False, format="%d", step=1, label=col
             )
         elif col == "Apellido(s)":
             # Ya no usamos visible=False
-            column_config[col] = st.column_config.TextColumn(disabled=is_checked)
+            column_config[col] = st.column_config.TextColumn(disabled=False)
         else:
-            column_config[col] = st.column_config.TextColumn(disabled=is_checked)
+            column_config[col] = st.column_config.TextColumn(disabled=False)
 
     if show_lastnames:
         visible_columns = df.columns.tolist()
