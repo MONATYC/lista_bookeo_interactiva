@@ -75,7 +75,7 @@ Eres un experto OCR. Devuelve **exactamente** este JSON:
 {
   "title": "<TÍTULO EN UNA LÍNEA>",
   "rows": [
-    {"Cliente": "...", "Participantes": 0, "Importe": "... €", "Teléfono": "...", "Reserva": "..."}
+    {"Cliente": "...", "Participantes": ..., "Importe": "... €", "Reserva": "..."}
   ]
 }
 """
