@@ -21,11 +21,7 @@ st.set_page_config(
 
 # Cargar API_KEY desde secrets.toml
 def get_api_key():
-    try:
-        secrets = toml.load("secrets.toml")
-        return secrets["api"]["API_KEY"]
-    except Exception:
-        return None
+    genai.configure(api_key=st.secrets["API_KEY"])
 
 
 def save_cache(pages, page_counter):
