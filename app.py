@@ -1,4 +1,4 @@
-import uuid, os, base64, json
+import uuid, os, json
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
