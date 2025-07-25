@@ -20,23 +20,20 @@ st.set_page_config(
 
 
 # Cargar y configurar la API de Gemini
+import pathlib, toml
+
+
 def configure_api():
-    """Carga la API_KEY desde los secretos y configura la API de Gemini."""
     api_key = st.secrets.get("API_KEY")
     if not api_key:
-        st.error(
-            "No se encontró la API_KEY de Gemini. Asegúrate de que está en tu archivo .streamlit/secrets.toml."
-        )
-        st.info(
-            'El archivo `.streamlit/secrets.toml` debería tener el siguiente formato:\n\n`API_KEY = "tu_clave_de_api_aqui"`'
-        )
+        local = pathlib.Path(__file__).parent / ".streamlit" / "secrets.toml"
+        if local.exists():
+            api_key = toml.load(local).get("API_KEY")
+    if not api_key:
+        st.error("No se encontró API_KEY…")
         return False
-    try:
-        genai.configure(api_key=api_key)
-        return True
-    except Exception as e:
-        st.error(f"Error al configurar la API de Gemini: {e}")
-        return False
+    genai.configure(api_key=api_key)
+    return True
 
 
 def save_cache(pages, page_counter):
