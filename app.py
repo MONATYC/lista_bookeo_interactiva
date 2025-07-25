@@ -1,4 +1,5 @@
 import os
+
 os.environ["WATCHDOG_USE_POLLING"] = "true"
 
 import base64
@@ -127,6 +128,18 @@ if cur_idx >= len(pages):
     st.session_state.current = 0
     cur_idx = 0
 
+# Si la lista de páginas está vacía, crear una nueva por defecto
+if not pages:
+    page_counter += 1
+    new_page = {
+        "id": str(uuid.uuid4()),
+        "name": f"Visita {page_counter}",
+        "df": None,
+        "created_at": datetime.now().isoformat(),
+    }
+    pages.append(new_page)
+    st.session_state.page_counter = page_counter
+
 page = pages[cur_idx]
 
 
@@ -159,6 +172,18 @@ with st.sidebar:
             ):
                 # Borra página y ajusta current si hace falta
                 del pages[i]
+
+                if not pages:
+                    page_counter += 1
+                    new_page = {
+                        "id": str(uuid.uuid4()),
+                        "name": f"Visita {page_counter}",
+                        "df": None,
+                        "created_at": datetime.now().isoformat(),
+                    }
+                    pages.append(new_page)
+                    st.session_state.page_counter = page_counter
+
                 if st.session_state.current >= len(pages):
                     st.session_state.current = max(0, len(pages) - 1)
                 save_cache(pages, page_counter)
