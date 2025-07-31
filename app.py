@@ -2,6 +2,7 @@ import os
 
 os.environ["WATCHDOG_USE_POLLING"] = "true"
 
+import pdf_sanitizer 
 import base64
 import uuid
 import json
@@ -84,6 +85,8 @@ def extract_with_gemini(pdf_bytes: bytes) -> tuple[str, pd.DataFrame]:
     Extrae datos de un PDF usando la API de Gemini.
     Asume que la API ya ha sido configurada.
     """
+    # 🔐 Paso nuevo: borrar teléfonos
+    pdf_bytes = pdf_sanitizer.sanitize_pdf(pdf_bytes, permanent=False)
     pdf_part = {"mime_type": "application/pdf", "data": pdf_bytes}
     prompt = """
 Eres un experto OCR. El PDF contiene registros donde los nombres y apellidos aparecen en el siguiente formato:
@@ -92,7 +95,7 @@ Devuelve **exactamente** este JSON:
 {
   "title": "<TÍTULO EN UNA LÍNEA>",
   "rows": [
-    {"Nombre": "...", "Apellido(s)": "...", "Participantes": "...", "Importe": "... €","Teléfono": "... €", "Reserva": "..."}
+    {"Nombre": "...", "Apellido(s)": "...", "Participantes": "...", "Importe": "... €", "Reserva": "..."}
   ]
 }
 """
@@ -277,7 +280,6 @@ else:
             "check",
             "Nombre",
             "Apellido(s)",
-            "Teléfono",
             "Participantes",
             "Importe",
             "Reserva",
@@ -299,7 +301,7 @@ else:
             column_config[col] = st.column_config.NumberColumn(
                 disabled=False, format="%d", step=1, label=col
             )
-        elif col in ["Apellido(s)", "Teléfono"]:
+        elif col in ["Apellido(s)"]:
             column_config[col] = st.column_config.TextColumn(disabled=False)
         else:
             column_config[col] = st.column_config.TextColumn(disabled=False)
