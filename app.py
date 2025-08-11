@@ -2,7 +2,7 @@ import os
 
 os.environ["WATCHDOG_USE_POLLING"] = "true"
 
-import pdf_sanitizer 
+import pdf_sanitizer
 import base64
 import uuid
 import json
@@ -65,6 +65,10 @@ def load_cache():
             p["df"] = pd.DataFrame(
                 df_data["data"], index=df_data["index"], columns=df_data["columns"]
             )
+            if "ha_sido_editado" in p["df"].columns:
+                p["df"]["ha_sido_editado"] = p["df"]["ha_sido_editado"].apply(
+                    lambda x: "" if x is False or x is None else str(x)
+                )
     return pages, data.get("page_counter", 0)
 
 
@@ -100,7 +104,7 @@ Devuelve **exactamente** este JSON:
 }
 """
     # Modelo rápido y multimodal
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash-lite")
     response = model.generate_content([prompt, pdf_part])
 
     try:
@@ -108,6 +112,8 @@ Devuelve **exactamente** este JSON:
         data = json.loads(txt)
         df = pd.DataFrame(data["rows"])
         df.insert(0, "check", False)
+        df["Notas"] = ""
+        df["ha_sido_editado"] = ""  # Añadir columna de estado de edición
         return data["title"], df
     except Exception as e:
         st.error(f"Error procesando respuesta de Gemini: {e}")
@@ -170,8 +176,13 @@ with st.sidebar:
     st.markdown("### Visitas")
     for i, p in enumerate(pages):
         label = extract_sidebar_label(p["name"])
-        if p["df"] is not None and "check" in p["df"].columns:
-            if p["df"][~p["df"]["check"]].empty:
+        if p["df"] is not None:
+            if (
+                "ha_sido_editado" in p["df"].columns
+                and (p["df"]["ha_sido_editado"] != "").any()
+            ):
+                label += " ✏️"
+            if "check" in p["df"].columns and p["df"][~p["df"]["check"]].empty:
                 label += " 🟢"
         col1, col2 = st.columns([0.85, 0.15], gap="small")
         with col1:
@@ -251,9 +262,27 @@ if page["df"] is None:
             "La funcionalidad de carga de PDF está deshabilitada hasta que se configure la API_KEY."
         )
 else:
-    df = page["df"]
+    df = page["df"].copy()  # Usar una copia para evitar mutaciones inesperadas
     if "check" not in df.columns:
         df.insert(0, "check", False)
+    if "Notas" not in df.columns:
+        df["Notas"] = ""
+    if "ha_sido_editado" not in df.columns:
+        df["ha_sido_editado"] = ""
+
+    # Ensure ha_sido_editado is always a string and empty if no edits
+    df["ha_sido_editado"] = df["ha_sido_editado"].apply(
+        lambda x: "" if x is False or x is None else str(x)
+    )
+
+    # --- LÓGICA PARA RESALTAR FILAS ---
+    # El lápiz aparece si la fila fue editada.
+    df["✏️"] = df.apply(
+        lambda row: f"✏️ {row['ha_sido_editado']}"
+        if str(row["ha_sido_editado"]).strip()
+        else "",
+        axis=1,
+    )
 
     # Inyectar CSS para aumentar la fuente, centrar el texto y permitir ancho automático.
     st.markdown(
@@ -272,30 +301,39 @@ else:
     is_checked = df["check"].tolist()
 
     # ---------- CONFIGURACIÓN DE COLUMNAS ----------
-    column_config = {"check": st.column_config.CheckboxColumn("Hecho")}
+    column_config = {
+        "check": st.column_config.CheckboxColumn("Hecho"),
+        "✏️": st.column_config.TextColumn(label="", disabled=True),
+        "Notas": st.column_config.TextColumn(label="Notas", disabled=False),
+        "ha_sido_editado": None,  # Ocultar esta columna
+    }
 
     # Alternar columnas visibles según el estado del checkbox "Visibles todas las columnas"
     if show_all:
         desired_order = [
+            "✏️",
             "check",
             "Nombre",
             "Apellido(s)",
             "Participantes",
             "Importe",
             "Reserva",
+            "Notas",
         ]
     else:
         desired_order = [
+            "✏️",
             "check",
             "Nombre",
             "Participantes",
             "Importe",
             "Reserva",
+            "Notas",
         ]
     visible_columns = [col for col in desired_order if col in df.columns]
 
     for col in df.columns:
-        if col == "check":
+        if col in ["check", "✏️", "Notas", "ha_sido_editado"]:
             continue
         if col == "Participantes":
             column_config[col] = st.column_config.NumberColumn(
@@ -315,8 +353,34 @@ else:
         use_container_width=True,
     )
 
+    # --- LÓGICA PARA DETECTAR CAMBIOS Y ACTUALIZAR ESTADO ---
     if not df.equals(edited):
-        page["df"] = edited
+        # Columnas a ignorar en la comparación (el emoji y el estado de edición)
+        cols_to_ignore = ["✏️", "ha_sido_editado", "check"]
+        df_comp = df.drop(columns=cols_to_ignore, errors="ignore")
+        edited_comp = edited.drop(columns=cols_to_ignore, errors="ignore")
+
+        # Forzar la conversión a string para una comparación más robusta
+        # y encontrar las filas que han cambiado.
+        diff_mask = df_comp.astype(str) != edited_comp.astype(str)
+
+        # Iterar solo sobre las filas que han cambiado
+        for idx in diff_mask[diff_mask.any(axis=1)].index:
+            changed_cols = diff_mask.columns[diff_mask.loc[idx]].tolist()
+
+            # Obtener las columnas ya editadas
+            existing_edited_cols_str = df.loc[idx, "ha_sido_editado"]
+            if isinstance(existing_edited_cols_str, str) and existing_edited_cols_str:
+                existing_edited_cols = existing_edited_cols_str.split(", ")
+            else:
+                existing_edited_cols = []
+
+            # Unir las nuevas con las existentes sin duplicados
+            all_changed_cols = sorted(list(set(existing_edited_cols + changed_cols)))
+            edited.loc[idx, "ha_sido_editado"] = ", ".join(all_changed_cols)
+
+        # Guardar el DF modificado (sin la columna del emoji) y reiniciar la app
+        page["df"] = edited.drop(columns=["✏️"])
         save_cache(pages, page_counter)
         st.rerun()
 

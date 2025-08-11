@@ -98,17 +98,53 @@ def sanitize_pdf(
 
 # --- USO DE PRUEBA LOCAL (solo si se ejecuta directamente) ---
 if __name__ == "__main__":
-    src_pdf = "Bookeo_14septiembre2024_unido.pdf"
-    dst_pdf = "Bookeo_14septiembre2024_unido_REDACT.pdf"
+    import argparse
 
-    with open(src_pdf, "rb") as f:
-        pdf_bytes = f.read()
-
-    redacted_bytes = sanitize_pdf(
-        pdf_bytes, keyword="Teléfono", padding=4, permanent=False
+    parser = argparse.ArgumentParser(
+        description="Anonimiza una columna de un PDF buscando un encabezado."
+    )
+    parser.add_argument("src_pdf", help="Ruta al PDF de origen.")
+    parser.add_argument("dst_pdf", help="Ruta al PDF de destino.")
+    parser.add_argument(
+        "--keyword", default="Teléfono", help="Encabezado de la columna a anonimizar."
+    )
+    parser.add_argument(
+        "--case-sensitive",
+        action="store_true",
+        help="Busca el encabezado distinguiendo mayúsculas/minúsculas.",
+    )
+    parser.add_argument(
+        "--padding",
+        type=float,
+        default=2.0,
+        help="Espacio extra alrededor de la columna.",
+    )
+    parser.add_argument(
+        "--permanent",
+        action="store_true",
+        help="Aplica redacción permanente (no se puede deshacer).",
     )
 
-    with open(dst_pdf, "wb") as f:
-        f.write(redacted_bytes)
+    args = parser.parse_args()
 
-    print(f"PDF protegido guardado en: {dst_pdf}")
+    try:
+        with open(args.src_pdf, "rb") as f:
+            pdf_bytes = f.read()
+
+        redacted_bytes = sanitize_pdf(
+            pdf_bytes,
+            keyword=args.keyword,
+            case_sensitive=args.case_sensitive,
+            padding=args.padding,
+            permanent=args.permanent,
+        )
+
+        with open(args.dst_pdf, "wb") as f:
+            f.write(redacted_bytes)
+
+        print(f"PDF protegido guardado en: {args.dst_pdf}")
+
+    except FileNotFoundError:
+        print(f"Error: El archivo '{args.src_pdf}' no fue encontrado.")
+    except Exception as e:
+        print(f"Ocurrió un error inesperado: {e}")
