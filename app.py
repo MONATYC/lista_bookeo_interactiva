@@ -104,7 +104,7 @@ Devuelve **exactamente** este JSON:
 }
 """
     # Modelo rápido y multimodal
-    model = genai.GenerativeModel("gemini-2.5-flash-lite")
+    model = genai.GenerativeModel("gemini-flash-lite-latest")
     response = model.generate_content([prompt, pdf_part])
 
     try:
